@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+sudo tar -zcvf $1 <%= @dirs.map { |dir| "#{dir}/*.log" }.join(' ') %>

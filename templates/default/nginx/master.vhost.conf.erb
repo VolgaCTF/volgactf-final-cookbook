@@ -1,0 +1,186 @@
+upstream web_server {
+  <% (0...@web_processes).to_a.each do |num| %>
+  server <%= @web_host %>:<%= @web_port_start + num %>;
+  <% end %>
+}
+
+upstream stream_server {
+  server <%= @stream_host %>:<%= @stream_port %>;
+}
+
+js_include <%= @flag_js_nginx %>;
+
+server {
+  listen 80;
+  server_name <%= @fqdn_list.join(' ') %>;
+
+  <% if @access_log_options == 'off' %>
+  access_log off;
+  <% else %>
+  access_log <%= @access_log %><% unless @access_log_options.empty? %> <%= @access_log_options %><% end %>;
+  <% end %>
+  error_log <%= @error_log %><% unless @error_log_options.empty? %> <%= @error_log_options %><% end %>;
+
+  charset utf-8;
+
+  location / {
+    root <%= @frontend_dir %>/build/html;
+    rewrite ^(.*)$ /index.html break;
+  }
+
+  location /assets/ {
+    root <%= @frontend_dir %>/build;
+  }
+
+  location /api/checker/v2/ {
+    <% @internal_networks.each do |network| %>
+    allow <%= network %>;
+    <% end %>
+    deny all;
+
+    auth_basic "Restricted";
+    auth_basic_user_file <%= @htpasswd %>;
+
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Host $http_host;
+
+    proxy_pass http://web_server;
+    proxy_redirect off;
+
+    proxy_http_version 1.1;
+    chunked_transfer_encoding off;
+    proxy_buffering off;
+    proxy_cache off;
+
+    client_max_body_size 1m;
+  }
+
+  location /api/flag/v1/submit {
+    if ($volgactf_final_identity = 0) {
+      return 403;
+    }
+
+    limit_req_status 429;
+    limit_req zone=volgactf_final_flag_submit<% if @flag_submit_req_limit_burst > 0 %> burst=<%= @flag_submit_req_limit_burst %><% if @flag_submit_req_limit_nodelay %> nodelay<% end %><% end %>;
+
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Host $http_host;
+
+    proxy_pass http://web_server;
+    proxy_redirect off;
+
+    proxy_http_version 1.1;
+    chunked_transfer_encoding off;
+    proxy_buffering off;
+    proxy_cache off;
+
+    client_max_body_size 33;
+
+    error_page 403 /flag_submit_403;
+    error_page 413 /flag_submit_413;
+    error_page 429 /flag_submit_429;
+  }
+
+  location = /flag_submit_403 {
+    internal;
+    js_content flag_submit_403;
+  }
+
+  location = /flag_submit_413 {
+    internal;
+    js_content flag_submit_413;
+  }
+
+  location = /flag_submit_429 {
+    internal;
+    js_content flag_submit_429;
+  }
+
+  location /api/flag/v1/info {
+    if ($volgactf_final_identity = 0) {
+      return 403;
+    }
+
+    limit_req_status 429;
+    limit_req zone=volgactf_final_flag_info<% if @flag_info_req_limit_burst > 0 %> burst=<%= @flag_info_req_limit_burst %><% if @flag_info_req_limit_nodelay %> nodelay<% end %><% end %>;
+
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Host $http_host;
+
+    proxy_pass http://web_server;
+    proxy_redirect off;
+
+    proxy_http_version 1.1;
+    chunked_transfer_encoding off;
+    proxy_buffering off;
+    proxy_cache off;
+
+    error_page 403 /flag_getinfo_403;
+    error_page 404 /flag_getinfo_404;
+    error_page 429 /flag_getinfo_429;
+  }
+
+  location = /flag_getinfo_403 {
+    internal;
+    js_content flag_getinfo_403;
+  }
+
+  location = /flag_getinfo_404 {
+    internal;
+    js_content flag_getinfo_404;
+  }
+
+  location = /flag_getinfo_429 {
+    internal;
+    js_content flag_getinfo_429;
+  }
+
+  location /api/ {
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Host $http_host;
+
+    proxy_pass http://web_server;
+    proxy_redirect off;
+
+    proxy_http_version 1.1;
+    chunked_transfer_encoding off;
+    proxy_buffering off;
+    proxy_cache off;
+
+    client_max_body_size 1m;
+  }
+
+  location /stream/ {
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Host $http_host;
+
+    proxy_pass http://stream_server;
+    proxy_redirect off;
+
+    proxy_http_version 1.1;
+    chunked_transfer_encoding off;
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 1h;
+  }
+
+  location /visualization {
+    <% @internal_networks.each do |network| %>
+    allow <%= network %>;
+    <% end %>
+    deny all;
+
+    set $contest_title "<%= @competition_title %>";
+    ssi on;
+    alias <%= @visualization_dir %>;
+  }
+
+  location /media {
+    alias <%= @media_dir %>;
+  }
+}

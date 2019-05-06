@@ -1,0 +1,35 @@
+upstream <%= @name %>_server {
+  <% (0...@upstream_processes).to_a.each do |num| %>
+  server <%= @upstream_host %>:<%= @upstream_port_start + num %>;
+  <% end %>
+}
+
+server {
+  listen 80;
+  server_name <%= @fqdn %>;
+
+  <% if @access_log_options == 'off' %>
+  access_log off;
+  <% else %>
+  access_log <%= @access_log %><% unless @access_log_options.empty? %> <%= @access_log_options %><% end %>;
+  <% end %>
+  error_log <%= @error_log %><% unless @error_log_options.empty? %> <%= @error_log_options %><% end %>;
+
+  charset utf-8;
+
+  location / {
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Host $http_host;
+
+    proxy_pass http://<%= @name %>_server/;
+    proxy_redirect off;
+
+    proxy_http_version 1.1;
+    chunked_transfer_encoding off;
+    proxy_buffering off;
+    proxy_cache off;
+
+    client_max_body_size 1m;
+  }
+}

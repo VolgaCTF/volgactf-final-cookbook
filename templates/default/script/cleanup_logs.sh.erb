@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+<% @dirs.each do |dir| %>
+sudo rm -vf <%= dir %>/*.log
+<% end %>

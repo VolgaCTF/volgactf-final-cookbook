@@ -1,0 +1,33 @@
+module Themis
+  module Finals
+    module Domain
+      network do
+        internal <%= @internal_networks.map { |x| "'#{x}'"}.join(', ') %>
+      end
+
+      settings do
+        flag_lifetime <%= @settings['flag_lifetime'] %>
+        round_timespan <%= @settings['round_timespan'] %>
+        poll_timespan <%= @settings['poll_timespan'] %>
+        poll_delay <%= @settings['poll_delay'] %>
+      end
+
+      <% @teams.each do |team_alias, team_data| %>
+      team '<%= team_alias %>' do
+        name '<%= team_data['name'] %>'
+        network '<%= team_data['network'] %>'
+        guest <%= team_data.has_key?('guest') ? team_data['guest'].to_s : 'false' %>
+      end
+      <% end %>
+
+      <% @services.each do |service_alias, service_data| %>
+      service '<%= service_alias %>' do
+        name '<%= service_data['name'] %>'
+        hostmask '<%= service_data['hostmask'] %>'
+        checker_endpoint '<%= service_data['checker_endpoint'] %>'
+        attack_priority <%= service_data.has_key?('attack_priority') ? service_data['attack_priority'].to_s : 'false' %>
+      end
+      <% end %>
+    end
+  end
+end
