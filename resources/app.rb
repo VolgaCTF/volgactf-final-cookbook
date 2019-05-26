@@ -795,19 +795,20 @@ action :install do
       team_networks: new_resource.config['teams'].values.map { |x| x['network'] },
       flag_submit_req_limit_rate: new_resource.config['api_req_limits']['flag_submit']['rate'],
       flag_info_req_limit_rate: new_resource.config['api_req_limits']['flag_info']['rate'],
+      service_status_req_limit_rate: new_resource.config['api_req_limits']['service_status']['rate']
     )
     action :create
   end
 
-  flag_js_nginx = ::File.join(nginx_dir, 'volgactf-final-flag.js')
+  helper_js_nginx = ::File.join(nginx_dir, 'volgactf-final-helper.js')
 
   service 'nginx' do
     action :nothing
   end
 
-  cookbook_file flag_js_nginx do
+  cookbook_file helper_js_nginx do
     cookbook 'volgactf-final'
-    source 'volgactf-final-flag.js'
+    source 'volgactf-final-helper.js'
     owner lazy { node.run_state['nginx']['user'] }
     group lazy { node.run_state['nginx']['group'] }
     action :create
@@ -840,7 +841,9 @@ action :install do
         flag_info_req_limit_nodelay: new_resource.config['api_req_limits']['flag_info']['nodelay'],
         flag_submit_req_limit_burst: new_resource.config['api_req_limits']['flag_submit']['burst'],
         flag_submit_req_limit_nodelay: new_resource.config['api_req_limits']['flag_submit']['nodelay'],
-        flag_js_nginx: flag_js_nginx
+        service_status_req_limit_burst: new_resource.config['api_req_limits']['service_status']['burst'],
+        service_status_req_limit_nodelay: new_resource.config['api_req_limits']['service_status']['nodelay'],
+        helper_js_nginx: helper_js_nginx
       }
     })
     action :enable

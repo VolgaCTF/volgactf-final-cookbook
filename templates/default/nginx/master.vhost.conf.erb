@@ -8,7 +8,7 @@ upstream stream_server {
   server <%= @stream_host %>:<%= @stream_port %>;
 }
 
-js_include <%= @flag_js_nginx %>;
+js_include <%= @helper_js_nginx %>;
 
 server {
   listen 80;
@@ -57,6 +57,7 @@ server {
   }
 
   location /api/flag/v1/submit {
+    default_type text/plain;
     if ($volgactf_final_identity = 0) {
       return 403;
     }
@@ -75,6 +76,7 @@ server {
     chunked_transfer_encoding off;
     proxy_buffering off;
     proxy_cache off;
+    proxy_intercept_errors on;
 
     client_max_body_size 33;
 
@@ -85,20 +87,69 @@ server {
 
   location = /flag_submit_403 {
     internal;
+    default_type text/plain;
     js_content flag_submit_403;
   }
 
   location = /flag_submit_413 {
     internal;
+    default_type text/plain;
     js_content flag_submit_413;
   }
 
   location = /flag_submit_429 {
     internal;
+    default_type text/plain;
     js_content flag_submit_429;
   }
 
+  location /api/service/v1/status {
+    default_type text/plain;
+    if ($volgactf_final_identity = 0) {
+      return 403;
+    }
+
+    limit_req_status 429;
+    limit_req zone=volgactf_final_service_status<% if @service_status_req_limit_burst > 0 %> burst=<%= @service_status_req_limit_burst %><% if @service_status_req_limit_nodelay %> nodelay<% end %><% end %>;
+
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Host $http_host;
+
+    proxy_pass http://web_server;
+    proxy_redirect off;
+
+    proxy_http_version 1.1;
+    chunked_transfer_encoding off;
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_intercept_errors on;
+
+    error_page 403 /service_getstatus_403;
+    error_page 404 /service_getstatus_404;
+    error_page 429 /service_getstatus_429;
+  }
+
+  location = /service_getstatus_403 {
+    internal;
+    default_type text/plain;
+    js_content service_getstatus_403;
+  }
+
+  location = /service_getstatus_404 {
+    internal;
+    default_type text/plain;
+    js_content service_getstatus_404;
+  }
+
+  location = /service_getstatus_429 {
+    internal;
+    default_type text/plain;
+    js_content service_getstatus_429;
+  }
+
   location /api/flag/v1/info {
+    default_type text/plain;
     if ($volgactf_final_identity = 0) {
       return 403;
     }
@@ -117,6 +168,7 @@ server {
     chunked_transfer_encoding off;
     proxy_buffering off;
     proxy_cache off;
+    proxy_intercept_errors on;
 
     error_page 403 /flag_getinfo_403;
     error_page 404 /flag_getinfo_404;
@@ -125,16 +177,19 @@ server {
 
   location = /flag_getinfo_403 {
     internal;
+    default_type text/plain;
     js_content flag_getinfo_403;
   }
 
   location = /flag_getinfo_404 {
     internal;
+    default_type text/plain;
     js_content flag_getinfo_404;
   }
 
   location = /flag_getinfo_429 {
     internal;
+    default_type text/plain;
     js_content flag_getinfo_429;
   }
 

@@ -7,3 +7,4 @@ geo $volgactf_final_identity {
 
 limit_req_zone $volgactf_final_identity zone=volgactf_final_flag_info:10m rate=<%= @flag_info_req_limit_rate %>;
 limit_req_zone $volgactf_final_identity zone=volgactf_final_flag_submit:10m rate=<%= @flag_submit_req_limit_rate %>;
+limit_req_zone $volgactf_final_identity zone=volgactf_final_service_status:10m rate=<%= @service_status_req_limit_rate %>;

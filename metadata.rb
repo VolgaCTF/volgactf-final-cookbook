@@ -1,6 +1,6 @@
 name 'volgactf-final'
 description 'Installs and configures VolgaCTF Final'
-version '1.0.0'
+version '1.1.0'
 
 depends 'htpasswd', '~> 0.3.0'
 depends 'agit', '~> 0.1.2'
