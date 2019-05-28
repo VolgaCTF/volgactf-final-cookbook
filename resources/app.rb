@@ -16,7 +16,7 @@ property :backend_repo_revision, String, default: 'master'
 property :frontend_repo_id, String, default: 'themis-project/themis-finals-frontend'
 property :frontend_repo_revision, String, default: 'master'
 
-property :stream_repo_id, String, default: 'themis-project/themis-finals-stream'
+property :stream_repo_id, String, default: 'VolgaCTF/volgactf-final-stream'
 property :stream_repo_revision, String, default: 'master'
 
 property :visualization_repo_id, String, default: 'themis-project/themis-finals-visualization'
@@ -649,13 +649,6 @@ action :install do
     action :run
   end
 
-  yarn_run "Build scripts at #{stream_dir}" do
-    script 'build'
-    user new_resource.user
-    dir stream_dir
-    action :run
-  end
-
   stream_config = {
     network: {
       internal: new_resource.config['internal_networks'],
@@ -696,8 +689,8 @@ action :install do
           'PG_PASSWORD' => new_resource.postgres_password,
           'PG_DATABASE' => new_resource.postgres_db,
 
-          'THEMIS_FINALS_STREAM_REDIS_DB' => new_resource.stream_redis_db,
-          'THEMIS_FINALS_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
+          'VOLGACTF_FINAL_STREAM_REDIS_DB' => new_resource.stream_redis_db,
+          'VOLGACTF_FINAL_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
 
           'LOG_LEVEL' => new_resource.log_level.downcase
         }
@@ -727,7 +720,7 @@ action :install do
           User: new_resource.user,
           WorkingDirectory: stream_dir,
           EnvironmentFile: stream_env_file_path,
-          ExecStart: '/usr/local/bin/node dist/server.js'
+          ExecStart: '/usr/local/bin/node server.js'
         }
       }
     })
