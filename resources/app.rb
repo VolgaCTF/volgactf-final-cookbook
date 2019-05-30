@@ -19,7 +19,7 @@ property :frontend_repo_revision, String, default: 'master'
 property :stream_repo_id, String, default: 'VolgaCTF/volgactf-final-stream'
 property :stream_repo_revision, String, default: 'master'
 
-property :visualization_repo_id, String, default: 'themis-project/themis-finals-visualization'
+property :visualization_repo_id, String, default: 'VolgaCTF/volgactf-final-visualization'
 property :visualization_repo_revision, String, default: 'master'
 
 property :redis_host, String, required: true

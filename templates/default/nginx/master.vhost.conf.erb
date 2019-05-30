@@ -230,6 +230,10 @@ server {
     <% end %>
     deny all;
 
+    location ~ /\.git {
+      deny all;
+    }
+
     set $contest_title "<%= @competition_title %>";
     ssi on;
     alias <%= @visualization_dir %>;
