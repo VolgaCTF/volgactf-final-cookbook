@@ -6,14 +6,15 @@ property :user, String, required: true
 property :user_home, String, required: true
 property :group, String, required: true
 
-property :development, [TrueClass, FalseClass], default: false
+property :repo_mode, String, equal_to: ['https', 'ssh'], default: 'https'
+property :run_mode, String, equal_to: ['development', 'production'], default: 'production'
 
 property :ruby_version, String, required: true
 
 property :backend_repo_id, String, default: 'themis-project/themis-finals-backend'
 property :backend_repo_revision, String, default: 'master'
 
-property :frontend_repo_id, String, default: 'themis-project/themis-finals-frontend'
+property :frontend_repo_id, String, default: 'VolgaCTF/volgactf-final-frontend'
 property :frontend_repo_revision, String, default: 'master'
 
 property :stream_repo_id, String, default: 'VolgaCTF/volgactf-final-stream'
@@ -213,7 +214,7 @@ action :install do
     })
   end
 
-  if new_resource.development
+  if new_resource.repo_mode == 'ssh'
     backend_repo_url = "git@github.com:#{new_resource.backend_repo_id}.git"
     frontend_repo_url = "git@github.com:#{new_resource.frontend_repo_id}.git"
     stream_repo_url = "git@github.com:#{new_resource.stream_repo_id}.git"
@@ -388,8 +389,8 @@ action :install do
           'THEMIS_FINALS_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix,
 
           'LOG_LEVEL' => new_resource.log_level,
-          'STDOUT_SYNC' => new_resource.development,
-          'RACK_ENV' => new_resource.development ? 'development' : 'production'
+          'STDOUT_SYNC' => new_resource.run_mode == 'development',
+          'RACK_ENV' => new_resource.run_mode
         }
       }
     }
@@ -462,8 +463,8 @@ action :install do
           'THEMIS_FINALS_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix,
 
           'LOG_LEVEL' => new_resource.log_level,
-          'STDOUT_SYNC' => new_resource.development,
-          'RACK_ENV' => new_resource.development ? 'development' : 'production'
+          'STDOUT_SYNC' => new_resource.run_mode == 'development',
+          'RACK_ENV' => new_resource.run_mode
         }
       }
     }
@@ -536,8 +537,8 @@ action :install do
           'THEMIS_FINALS_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix,
 
           'LOG_LEVEL' => new_resource.log_level,
-          'STDOUT_SYNC' => new_resource.development,
-          'RACK_ENV' => new_resource.development ? 'development' : 'production'
+          'STDOUT_SYNC' => new_resource.run_mode == 'development',
+          'RACK_ENV' => new_resource.run_mode
         }
       }
     }
@@ -625,9 +626,9 @@ action :install do
     script 'build'
     user new_resource.user
     dir frontend_dir
-    production !new_resource.development
+    production new_resource.run_mode == 'production'
     environment(
-      'THEMIS_FINALS_PRODUCTION' => new_resource.development ? 'no' : 'yes'
+      'NODE_ENV' => new_resource.run_mode
     )
     action :run
   end
