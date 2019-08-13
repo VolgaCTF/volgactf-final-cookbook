@@ -54,13 +54,13 @@ action :install do
     mode 0o644
     variables(
       env: new_resource.environment.merge({
-        'THEMIS_FINALS_AUTH_MASTER_USERNAME' => new_resource.auth_master_username,
-        'THEMIS_FINALS_AUTH_MASTER_PASSWORD' => new_resource.auth_master_password,
-        'THEMIS_FINALS_AUTH_CHECKER_USERNAME' => new_resource.auth_checker_username,
-        'THEMIS_FINALS_AUTH_CHECKER_PASSWORD' => new_resource.auth_checker_password,
-        'THEMIS_FINALS_FLAG_SIGN_KEY_PUBLIC' => new_resource.flag_sign_key_public,
-        'THEMIS_FINALS_FLAG_WRAP_PREFIX' => new_resource.flag_wrap_prefix,
-        'THEMIS_FINALS_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix
+        'VOLGACTF_FINAL_AUTH_MASTER_USERNAME' => new_resource.auth_master_username,
+        'VOLGACTF_FINAL_AUTH_MASTER_PASSWORD' => new_resource.auth_master_password,
+        'VOLGACTF_FINAL_AUTH_CHECKER_USERNAME' => new_resource.auth_checker_username,
+        'VOLGACTF_FINAL_AUTH_CHECKER_PASSWORD' => new_resource.auth_checker_password,
+        'VOLGACTF_FINAL_FLAG_SIGN_KEY_PUBLIC' => new_resource.flag_sign_key_public,
+        'VOLGACTF_FINAL_FLAG_WRAP_PREFIX' => new_resource.flag_wrap_prefix,
+        'VOLGACTF_FINAL_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix
       })
     )
     action :create

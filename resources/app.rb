@@ -11,7 +11,7 @@ property :run_mode, String, equal_to: ['development', 'production'], default: 'p
 
 property :ruby_version, String, required: true
 
-property :backend_repo_id, String, default: 'themis-project/themis-finals-backend'
+property :backend_repo_id, String, default: 'VolgaCTF/volgactf-final-backend'
 property :backend_repo_revision, String, default: 'master'
 
 property :frontend_repo_id, String, default: 'VolgaCTF/volgactf-final-frontend'
@@ -280,23 +280,23 @@ action :install do
           'PG_PASSWORD' => new_resource.postgres_password,
           'PG_DATABASE' => new_resource.postgres_db,
 
-          'THEMIS_FINALS_STREAM_REDIS_DB' => new_resource.stream_redis_db,
-          'THEMIS_FINALS_QUEUE_REDIS_DB' => new_resource.queue_redis_db,
-          'THEMIS_FINALS_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
+          'VOLGACTF_FINAL_STREAM_REDIS_DB' => new_resource.stream_redis_db,
+          'VOLGACTF_FINAL_QUEUE_REDIS_DB' => new_resource.queue_redis_db,
+          'VOLGACTF_FINAL_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
 
-          'THEMIS_FINALS_MASTER_FQDN' => new_resource.fqdn,
+          'VOLGACTF_FINAL_MASTER_FQDN' => new_resource.fqdn,
 
-          'THEMIS_FINALS_TEAM_LOGO_DIR' => team_logo_dir,
-          'THEMIS_FINALS_UPLOAD_DIR' => upload_dir,
+          'VOLGACTF_FINAL_TEAM_LOGO_DIR' => team_logo_dir,
+          'VOLGACTF_FINAL_UPLOAD_DIR' => upload_dir,
 
-          'THEMIS_FINALS_AUTH_CHECKER_USERNAME' => new_resource.auth_checker_username,
-          'THEMIS_FINALS_AUTH_CHECKER_PASSWORD' => new_resource.auth_checker_password,
+          'VOLGACTF_FINAL_AUTH_CHECKER_USERNAME' => new_resource.auth_checker_username,
+          'VOLGACTF_FINAL_AUTH_CHECKER_PASSWORD' => new_resource.auth_checker_password,
 
-          'THEMIS_FINALS_FLAG_GENERATOR_SECRET' => new_resource.flag_generator_secret,
-          'THEMIS_FINALS_FLAG_SIGN_KEY_PRIVATE' => new_resource.flag_sign_key_private,
-          'THEMIS_FINALS_FLAG_SIGN_KEY_PUBLIC' => new_resource.flag_sign_key_public,
-          'THEMIS_FINALS_FLAG_WRAP_PREFIX' => new_resource.flag_wrap_prefix,
-          'THEMIS_FINALS_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix
+          'VOLGACTF_FINAL_FLAG_GENERATOR_SECRET' => new_resource.flag_generator_secret,
+          'VOLGACTF_FINAL_FLAG_SIGN_KEY_PRIVATE' => new_resource.flag_sign_key_private,
+          'VOLGACTF_FINAL_FLAG_SIGN_KEY_PUBLIC' => new_resource.flag_sign_key_public,
+          'VOLGACTF_FINAL_FLAG_WRAP_PREFIX' => new_resource.flag_wrap_prefix,
+          'VOLGACTF_FINAL_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix
         }
       }
     }
@@ -370,23 +370,23 @@ action :install do
           'PG_PASSWORD' => new_resource.postgres_password,
           'PG_DATABASE' => new_resource.postgres_db,
 
-          'THEMIS_FINALS_STREAM_REDIS_DB' => new_resource.stream_redis_db,
-          'THEMIS_FINALS_QUEUE_REDIS_DB' => new_resource.queue_redis_db,
-          'THEMIS_FINALS_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
+          'VOLGACTF_FINAL_STREAM_REDIS_DB' => new_resource.stream_redis_db,
+          'VOLGACTF_FINAL_QUEUE_REDIS_DB' => new_resource.queue_redis_db,
+          'VOLGACTF_FINAL_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
 
-          'THEMIS_FINALS_MASTER_FQDN' => new_resource.fqdn,
+          'VOLGACTF_FINAL_MASTER_FQDN' => new_resource.fqdn,
 
-          'THEMIS_FINALS_TEAM_LOGO_DIR' => team_logo_dir,
-          'THEMIS_FINALS_UPLOAD_DIR' => upload_dir,
+          'VOLGACTF_FINAL_TEAM_LOGO_DIR' => team_logo_dir,
+          'VOLGACTF_FINAL_UPLOAD_DIR' => upload_dir,
 
-          'THEMIS_FINALS_AUTH_CHECKER_USERNAME' => new_resource.auth_checker_username,
-          'THEMIS_FINALS_AUTH_CHECKER_PASSWORD' => new_resource.auth_checker_password,
+          'VOLGACTF_FINAL_AUTH_CHECKER_USERNAME' => new_resource.auth_checker_username,
+          'VOLGACTF_FINAL_AUTH_CHECKER_PASSWORD' => new_resource.auth_checker_password,
 
-          'THEMIS_FINALS_FLAG_GENERATOR_SECRET' => new_resource.flag_generator_secret,
-          'THEMIS_FINALS_FLAG_SIGN_KEY_PRIVATE' => new_resource.flag_sign_key_private,
-          'THEMIS_FINALS_FLAG_SIGN_KEY_PUBLIC' => new_resource.flag_sign_key_public,
-          'THEMIS_FINALS_FLAG_WRAP_PREFIX' => new_resource.flag_wrap_prefix,
-          'THEMIS_FINALS_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix,
+          'VOLGACTF_FINAL_FLAG_GENERATOR_SECRET' => new_resource.flag_generator_secret,
+          'VOLGACTF_FINAL_FLAG_SIGN_KEY_PRIVATE' => new_resource.flag_sign_key_private,
+          'VOLGACTF_FINAL_FLAG_SIGN_KEY_PUBLIC' => new_resource.flag_sign_key_public,
+          'VOLGACTF_FINAL_FLAG_WRAP_PREFIX' => new_resource.flag_wrap_prefix,
+          'VOLGACTF_FINAL_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix,
 
           'LOG_LEVEL' => new_resource.log_level,
           'STDOUT_SYNC' => new_resource.run_mode == 'development',
@@ -444,23 +444,23 @@ action :install do
           'PG_PASSWORD' => new_resource.postgres_password,
           'PG_DATABASE' => new_resource.postgres_db,
 
-          'THEMIS_FINALS_STREAM_REDIS_DB' => new_resource.stream_redis_db,
-          'THEMIS_FINALS_QUEUE_REDIS_DB' => new_resource.queue_redis_db,
-          'THEMIS_FINALS_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
+          'VOLGACTF_FINAL_STREAM_REDIS_DB' => new_resource.stream_redis_db,
+          'VOLGACTF_FINAL_QUEUE_REDIS_DB' => new_resource.queue_redis_db,
+          'VOLGACTF_FINAL_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
 
-          'THEMIS_FINALS_MASTER_FQDN' => new_resource.fqdn,
+          'VOLGACTF_FINAL_MASTER_FQDN' => new_resource.fqdn,
 
-          'THEMIS_FINALS_TEAM_LOGO_DIR' => team_logo_dir,
-          'THEMIS_FINALS_UPLOAD_DIR' => upload_dir,
+          'VOLGACTF_FINAL_TEAM_LOGO_DIR' => team_logo_dir,
+          'VOLGACTF_FINAL_UPLOAD_DIR' => upload_dir,
 
-          'THEMIS_FINALS_AUTH_CHECKER_USERNAME' => new_resource.auth_checker_username,
-          'THEMIS_FINALS_AUTH_CHECKER_PASSWORD' => new_resource.auth_checker_password,
+          'VOLGACTF_FINAL_AUTH_CHECKER_USERNAME' => new_resource.auth_checker_username,
+          'VOLGACTF_FINAL_AUTH_CHECKER_PASSWORD' => new_resource.auth_checker_password,
 
-          'THEMIS_FINALS_FLAG_GENERATOR_SECRET' => new_resource.flag_generator_secret,
-          'THEMIS_FINALS_FLAG_SIGN_KEY_PRIVATE' => new_resource.flag_sign_key_private,
-          'THEMIS_FINALS_FLAG_SIGN_KEY_PUBLIC' => new_resource.flag_sign_key_public,
-          'THEMIS_FINALS_FLAG_WRAP_PREFIX' => new_resource.flag_wrap_prefix,
-          'THEMIS_FINALS_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix,
+          'VOLGACTF_FINAL_FLAG_GENERATOR_SECRET' => new_resource.flag_generator_secret,
+          'VOLGACTF_FINAL_FLAG_SIGN_KEY_PRIVATE' => new_resource.flag_sign_key_private,
+          'VOLGACTF_FINAL_FLAG_SIGN_KEY_PUBLIC' => new_resource.flag_sign_key_public,
+          'VOLGACTF_FINAL_FLAG_WRAP_PREFIX' => new_resource.flag_wrap_prefix,
+          'VOLGACTF_FINAL_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix,
 
           'LOG_LEVEL' => new_resource.log_level,
           'STDOUT_SYNC' => new_resource.run_mode == 'development',
@@ -518,23 +518,23 @@ action :install do
           'PG_PASSWORD' => new_resource.postgres_password,
           'PG_DATABASE' => new_resource.postgres_db,
 
-          'THEMIS_FINALS_STREAM_REDIS_DB' => new_resource.stream_redis_db,
-          'THEMIS_FINALS_QUEUE_REDIS_DB' => new_resource.queue_redis_db,
-          'THEMIS_FINALS_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
+          'VOLGACTF_FINAL_STREAM_REDIS_DB' => new_resource.stream_redis_db,
+          'VOLGACTF_FINAL_QUEUE_REDIS_DB' => new_resource.queue_redis_db,
+          'VOLGACTF_FINAL_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
 
-          'THEMIS_FINALS_MASTER_FQDN' => new_resource.fqdn,
+          'VOLGACTF_FINAL_MASTER_FQDN' => new_resource.fqdn,
 
-          'THEMIS_FINALS_TEAM_LOGO_DIR' => team_logo_dir,
-          'THEMIS_FINALS_UPLOAD_DIR' => upload_dir,
+          'VOLGACTF_FINAL_TEAM_LOGO_DIR' => team_logo_dir,
+          'VOLGACTF_FINAL_UPLOAD_DIR' => upload_dir,
 
-          'THEMIS_FINALS_AUTH_CHECKER_USERNAME' => new_resource.auth_checker_username,
-          'THEMIS_FINALS_AUTH_CHECKER_PASSWORD' => new_resource.auth_checker_password,
+          'VOLGACTF_FINAL_AUTH_CHECKER_USERNAME' => new_resource.auth_checker_username,
+          'VOLGACTF_FINAL_AUTH_CHECKER_PASSWORD' => new_resource.auth_checker_password,
 
-          'THEMIS_FINALS_FLAG_GENERATOR_SECRET' => new_resource.flag_generator_secret,
-          'THEMIS_FINALS_FLAG_SIGN_KEY_PRIVATE' => new_resource.flag_sign_key_private,
-          'THEMIS_FINALS_FLAG_SIGN_KEY_PUBLIC' => new_resource.flag_sign_key_public,
-          'THEMIS_FINALS_FLAG_WRAP_PREFIX' => new_resource.flag_wrap_prefix,
-          'THEMIS_FINALS_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix,
+          'VOLGACTF_FINAL_FLAG_GENERATOR_SECRET' => new_resource.flag_generator_secret,
+          'VOLGACTF_FINAL_FLAG_SIGN_KEY_PRIVATE' => new_resource.flag_sign_key_private,
+          'VOLGACTF_FINAL_FLAG_SIGN_KEY_PUBLIC' => new_resource.flag_sign_key_public,
+          'VOLGACTF_FINAL_FLAG_WRAP_PREFIX' => new_resource.flag_wrap_prefix,
+          'VOLGACTF_FINAL_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix,
 
           'LOG_LEVEL' => new_resource.log_level,
           'STDOUT_SYNC' => new_resource.run_mode == 'development',
