@@ -40,6 +40,7 @@ property :stream_redis_channel_namespace, String, default: 'volgactf.final'
 property :stream_host, String, default: '127.0.0.1'
 property :stream_port, Integer, default: 4000
 property :stream_processes, Integer, default: 2
+property :stream_max_listeners, Integer, default: 1024
 
 property :fqdn, String, required: true
 property :extra_fqdn, Array, default: []
@@ -79,9 +80,10 @@ property :cleanup_upload_dir_cron, Hash, default: {
 property :access_log_options, String, default: 'combined'
 property :error_log_options, String, default: 'error'
 
-property :customize_cookbook, [String, NilClass], default: nil
-property :customize_module, [String, NilClass], default: nil
-property :customize_files, Hash, default: {}
+property :branding_cookbook, [String, NilClass], default: nil
+property :branding_root, [String, NilClass], default: nil
+property :branding_folders, Array, default: []
+property :branding_files, Array, default: []
 
 default_action :install
 
@@ -585,35 +587,38 @@ action :install do
     action :update
   end
 
-  yarn_install frontend_dir do
+  npm_package 'volgactf-final-frontend' do
+    path frontend_dir
+    json true
     user new_resource.user
-    action :run
   end
 
-  if new_resource.customize_cookbook.nil? || new_resource.customize_module.nil?
-    execute "Copy customization file at #{frontend_dir}" do
-      command 'cp customize.example.js customize.js'
-      cwd frontend_dir
-      user new_resource.user
-      group new_resource.group
-      not_if "test -e #{frontend_dir}/customize.js"
-    end
-  else
-    cookbook_file ::File.join(frontend_dir, 'customize.js') do
-      cookbook new_resource.customize_cookbook
-      source new_resource.customize_module
+  branding_root_path = nil
+  unless new_resource.branding_cookbook.nil? || new_resource.branding_root.nil?
+    branding_root_path = ::File.join(frontend_dir, new_resource.branding_root)
+
+    directory branding_root_path do
       owner new_resource.user
       group new_resource.group
-      mode 0o644
+      mode 0o755
+      recursive true
       action :create
     end
-  end
 
-  unless new_resource.customize_cookbook.nil?
-    new_resource.customize_files.each do |file_name, file_path|
-      cookbook_file ::File.join(frontend_dir, file_path) do
-        cookbook new_resource.customize_cookbook
-        source file_name
+    new_resource.branding_folders.each do |x|
+      directory ::File.join(branding_root_path, x) do
+        owner new_resource.user
+        group new_resource.group
+        mode 0o755
+        recursive true
+        action :create
+      end
+    end
+
+    new_resource.branding_files.each do |x|
+      cookbook_file ::File.join(branding_root_path, x) do
+        cookbook new_resource.branding_cookbook
+        source ::File.join(new_resource.branding_root, x)
         owner new_resource.user
         group new_resource.group
         mode 0o644
@@ -622,13 +627,12 @@ action :install do
     end
   end
 
-  yarn_run "Build scripts at #{frontend_dir}" do
-    script 'build'
+  execute "build frontend at #{frontend_dir}" do
+    command "npm run #{new_resource.run_mode == 'production' ? 'build' : 'devbuild'}"
     user new_resource.user
-    dir frontend_dir
-    production new_resource.run_mode == 'production'
+    cwd frontend_dir
     environment(
-      'NODE_ENV' => new_resource.run_mode
+      'BRANDING_ROOT_PATH' => branding_root_path.nil? ? ::File.join(frontend_dir, 'branding-default') : branding_root_path
     )
     action :run
   end
@@ -645,9 +649,10 @@ action :install do
     action :update
   end
 
-  yarn_install stream_dir do
+  npm_package 'volgactf-final-stream' do
+    path stream_dir
+    json true
     user new_resource.user
-    action :run
   end
 
   stream_config = {
@@ -692,6 +697,7 @@ action :install do
 
           'VOLGACTF_FINAL_STREAM_REDIS_DB' => new_resource.stream_redis_db,
           'VOLGACTF_FINAL_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
+          'VOLGACTF_FINAL_STREAM_MAX_LISTENERS' => new_resource.stream_max_listeners,
 
           'LOG_LEVEL' => new_resource.log_level.downcase
         }
@@ -809,24 +815,45 @@ action :install do
     notifies :restart, 'service[nginx]', :delayed
   end
 
+  nginx_conf 'volgactf-final-upstream' do
+    cookbook 'volgactf-final'
+    template 'nginx/upstream.conf.erb'
+    variables(
+      upstream_web: 'volgactf-final-web',
+      web_processes: new_resource.web_processes,
+      web_host: new_resource.web_host,
+      web_port_start: new_resource.web_port_start,
+      upstream_stream: 'volgactf-final-stream',
+      stream_host: new_resource.stream_host,
+      stream_port: new_resource.stream_port
+    )
+    action :create
+  end
+
+  nginx_conf 'volgactf-final-js' do
+    cookbook 'volgactf-final'
+    template 'nginx/js.conf.erb'
+    variables(
+      helper_js_nginx: helper_js_nginx
+    )
+    action :create
+  end
+
   nginx_vhost 'volgactf-final' do
     cookbook 'volgactf-final'
     template 'nginx/master.vhost.conf.erb'
     variables(lazy {
       {
         fqdn_list: [new_resource.fqdn].concat(new_resource.extra_fqdn),
-        access_log: ::File.join(node.run_state['nginx']['log_dir'], 'volgactf-final_access.log'),
+        access_log: ::File.join(node.run_state['nginx']['log_dir'], 'new-volgactf-final_access.log'),
         access_log_options: new_resource.access_log_options,
-        error_log: ::File.join(node.run_state['nginx']['log_dir'], 'volgactf-final_error.log'),
+        error_log: ::File.join(node.run_state['nginx']['log_dir'], 'new-volgactf-final_error.log'),
         error_log_options: new_resource.error_log_options,
         frontend_dir: frontend_dir,
         visualization_dir: visualization_dir,
         media_dir: media_dir,
-        web_processes: new_resource.web_processes,
-        web_host: new_resource.web_host,
-        web_port_start: new_resource.web_port_start,
-        stream_host: new_resource.stream_host,
-        stream_port: new_resource.stream_port,
+        upstream_web: 'volgactf-final-web',
+        upstream_stream: 'volgactf-final-stream',
         internal_networks: new_resource.config['internal_networks'],
         htpasswd: htpasswd_file,
         team_networks: new_resource.config['teams'].values.map { |x| x['network'] },
@@ -836,8 +863,7 @@ action :install do
         flag_submit_req_limit_burst: new_resource.config['api_req_limits']['flag_submit']['burst'],
         flag_submit_req_limit_nodelay: new_resource.config['api_req_limits']['flag_submit']['nodelay'],
         service_status_req_limit_burst: new_resource.config['api_req_limits']['service_status']['burst'],
-        service_status_req_limit_nodelay: new_resource.config['api_req_limits']['service_status']['nodelay'],
-        helper_js_nginx: helper_js_nginx
+        service_status_req_limit_nodelay: new_resource.config['api_req_limits']['service_status']['nodelay']
       }
     })
     action :enable

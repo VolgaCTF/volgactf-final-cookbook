@@ -1,0 +1,9 @@
+upstream <%= @upstream_web %> {
+  <% (0...@web_processes).to_a.each do |num| %>
+  server <%= @web_host %>:<%= @web_port_start + num %>;
+  <% end %>
+}
+
+upstream <%= @upstream_stream %> {
+  server <%= @stream_host %>:<%= @stream_port %>;
+}

@@ -1,15 +1,3 @@
-upstream web_server {
-  <% (0...@web_processes).to_a.each do |num| %>
-  server <%= @web_host %>:<%= @web_port_start + num %>;
-  <% end %>
-}
-
-upstream stream_server {
-  server <%= @stream_host %>:<%= @stream_port %>;
-}
-
-js_include <%= @helper_js_nginx %>;
-
 server {
   listen 80;
   server_name <%= @fqdn_list.join(' ') %>;
@@ -24,12 +12,12 @@ server {
   charset utf-8;
 
   location / {
-    root <%= @frontend_dir %>/build/html;
+    root <%= @frontend_dir %>/public;
     rewrite ^(.*)$ /index.html break;
   }
 
-  location /assets/ {
-    root <%= @frontend_dir %>/build;
+  location /dist/ {
+    root <%= @frontend_dir %>;
   }
 
   location /api/checker/v2/ {
@@ -45,7 +33,7 @@ server {
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_set_header Host $http_host;
 
-    proxy_pass http://web_server;
+    proxy_pass http://<%= @upstream_web %>;
     proxy_redirect off;
 
     proxy_http_version 1.1;
@@ -69,7 +57,7 @@ server {
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_set_header Host $http_host;
 
-    proxy_pass http://web_server;
+    proxy_pass http://<%= @upstream_web %>;
     proxy_redirect off;
 
     proxy_http_version 1.1;
@@ -116,7 +104,7 @@ server {
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_set_header Host $http_host;
 
-    proxy_pass http://web_server;
+    proxy_pass http://<%= @upstream_web %>;
     proxy_redirect off;
 
     proxy_http_version 1.1;
@@ -161,7 +149,7 @@ server {
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_set_header Host $http_host;
 
-    proxy_pass http://web_server;
+    proxy_pass http://<%= @upstream_web %>;
     proxy_redirect off;
 
     proxy_http_version 1.1;
@@ -198,7 +186,7 @@ server {
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_set_header Host $http_host;
 
-    proxy_pass http://web_server;
+    proxy_pass http://<%= @upstream_web %>;
     proxy_redirect off;
 
     proxy_http_version 1.1;
@@ -214,7 +202,7 @@ server {
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_set_header Host $http_host;
 
-    proxy_pass http://stream_server;
+    proxy_pass http://<%= @upstream_stream %>;
     proxy_redirect off;
 
     proxy_http_version 1.1;
