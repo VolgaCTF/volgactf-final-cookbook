@@ -392,7 +392,7 @@ action :install do
 
           'LOG_LEVEL' => new_resource.log_level,
           'STDOUT_SYNC' => new_resource.run_mode == 'development',
-          'RACK_ENV' => new_resource.run_mode
+          'APP_ENV' => new_resource.run_mode
         }
       }
     }
@@ -465,8 +465,7 @@ action :install do
           'VOLGACTF_FINAL_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix,
 
           'LOG_LEVEL' => new_resource.log_level,
-          'STDOUT_SYNC' => new_resource.run_mode == 'development',
-          'RACK_ENV' => new_resource.run_mode
+          'STDOUT_SYNC' => new_resource.run_mode == 'development'
         }
       }
     }
@@ -539,8 +538,7 @@ action :install do
           'VOLGACTF_FINAL_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix,
 
           'LOG_LEVEL' => new_resource.log_level,
-          'STDOUT_SYNC' => new_resource.run_mode == 'development',
-          'RACK_ENV' => new_resource.run_mode
+          'STDOUT_SYNC' => new_resource.run_mode == 'development'
         }
       }
     }
