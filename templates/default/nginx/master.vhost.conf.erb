@@ -228,6 +228,11 @@ server {
   }
 
   location /media {
+    <% @internal_networks.concat(@team_networks).each do |network| %>
+    allow <%= network %>;
+    <% end %>
+    deny all;
+
     alias <%= @media_dir %>;
   }
 }
