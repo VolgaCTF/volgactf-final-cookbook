@@ -1,3 +1,3 @@
 <% @env.each do |key, val| %>
-<%= key %>="<%= val.is_a?(String) ? val.gsub("\n", '\\\\\n') : val %>"
+<%= key %>="<%= val %>"
 <% end %>

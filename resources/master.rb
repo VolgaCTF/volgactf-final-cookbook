@@ -1,4 +1,6 @@
-resource_name :volgactf_final_app
+# frozen_string_literal: true
+
+resource_name :volgactf_final_master
 
 property :root_dir, String, default: '/opt/volgactf/final'
 
@@ -6,8 +8,8 @@ property :user, String, required: true
 property :user_home, String, required: true
 property :group, String, required: true
 
-property :repo_mode, String, equal_to: ['https', 'ssh'], default: 'https'
-property :run_mode, String, equal_to: ['development', 'production'], default: 'production'
+property :repo_mode, String, equal_to: %w[https ssh], default: 'https'
+property :run_mode, String, equal_to: %w[development production], default: 'production'
 
 property :ruby_version, String, required: true
 
@@ -42,8 +44,21 @@ property :stream_port, Integer, default: 4000
 property :stream_processes, Integer, default: 2
 property :stream_max_listeners, Integer, default: 1024
 
-property :fqdn, String, required: true
-property :extra_fqdn, Array, default: []
+property :internal_host, String, required: true
+property :internal_port, Integer, default: 8000
+property :internal_default_server, [TrueClass, FalseClass], default: true
+
+property :public_fqdn, [String, Array], required: true
+property :public_listen, [String, Array, NilClass], default: nil
+property :public_secure, [TrueClass, FalseClass], default: true
+property :public_default_server, [TrueClass, FalseClass], default: true
+property :public_oscp_stapling, [TrueClass, FalseClass], default: true
+property :public_hsts_max_age, Integer, default: 15_768_000
+
+property :proxied_fqdn, [String, NilClass], default: nil
+property :proxied_port, Integer, default: 9000
+property :proxied_listen, [String, NilClass], default: nil
+property :proxied_default_server, [TrueClass, FalseClass], default: true
 
 property :auth_checker_username, String, required: true
 property :auth_checker_password, String, required: true
@@ -85,13 +100,16 @@ property :branding_root, [String, NilClass], default: nil
 property :branding_folders, Array, default: []
 property :branding_files, Array, default: []
 
+property :vlt_provider, Proc, default: -> { nil }
+property :vlt_format, Integer, default: 2
+
 default_action :install
 
 action :install do
   directory new_resource.root_dir do
     owner new_resource.user
     group new_resource.group
-    mode 0o755
+    mode '0755'
     recursive true
     action :create
   end
@@ -101,7 +119,7 @@ action :install do
   directory script_dir do
     owner new_resource.user
     group new_resource.group
-    mode 0o755
+    mode '0755'
     recursive true
     action :create
   end
@@ -111,7 +129,7 @@ action :install do
   directory media_dir do
     owner new_resource.user
     group new_resource.group
-    mode 0o755
+    mode '0755'
     recursive true
     action :create
   end
@@ -121,7 +139,7 @@ action :install do
   directory team_logo_dir do
     owner new_resource.user
     group new_resource.group
-    mode 0o755
+    mode '0755'
     recursive true
     action :create
   end
@@ -131,7 +149,7 @@ action :install do
   directory upload_dir do
     owner new_resource.user
     group new_resource.group
-    mode 0o755
+    mode '0755'
     recursive true
     action :create
   end
@@ -148,12 +166,12 @@ action :install do
         run_user: new_resource.user,
         upload_dir: upload_dir
       )
-      mode 0o755
+      mode '0755'
       action :create
     end
 
     cron 'volgactf_final_cleanup_upload_dir' do
-      command "#{cleanup_upload_dir_script}"
+      command cleanup_upload_dir_script
       minute new_resource.cleanup_upload_dir_cron['minute']
       hour new_resource.cleanup_upload_dir_cron['hour']
       day new_resource.cleanup_upload_dir_cron['day']
@@ -170,8 +188,8 @@ action :install do
     source 'script/dump_db.sh.erb'
     owner new_resource.user
     group new_resource.group
-    mode 0o775
-    variables lazy {
+    mode '0775'
+    variables(lazy do
       {
         pg_host: new_resource.postgres_host,
         pg_port: new_resource.postgres_port,
@@ -179,7 +197,7 @@ action :install do
         pg_password: new_resource.postgres_password,
         pg_dbname: new_resource.postgres_db
       }
-    }
+    end)
   end
 
   cleanup_script = ::File.join(script_dir, 'cleanup_logs')
@@ -189,14 +207,14 @@ action :install do
     source 'script/cleanup_logs.sh.erb'
     owner new_resource.user
     group new_resource.group
-    mode 0o775
-    variables(lazy {
+    mode '0775'
+    variables(lazy do
       {
         dirs: [
           node.run_state['nginx']['log_dir']
         ]
       }
-    })
+    end)
   end
 
   archive_script = ::File.join(script_dir, 'archive_logs')
@@ -206,29 +224,23 @@ action :install do
     source 'script/archive_logs.sh.erb'
     owner new_resource.user
     group new_resource.group
-    mode 0o775
-    variables(lazy {
+    mode '0775'
+    variables(lazy do
       {
         dirs: [
           node.run_state['nginx']['log_dir']
         ]
       }
-    })
-  end
-
-  if new_resource.repo_mode == 'ssh'
-    backend_repo_url = "git@github.com:#{new_resource.backend_repo_id}.git"
-    frontend_repo_url = "git@github.com:#{new_resource.frontend_repo_id}.git"
-    stream_repo_url = "git@github.com:#{new_resource.stream_repo_id}.git"
-    visualization_repo_url = "git@github.com:#{new_resource.visualization_repo_id}.git"
-  else
-    backend_repo_url = "https://github.com/#{new_resource.backend_repo_id}"
-    frontend_repo_url = "https://github.com/#{new_resource.frontend_repo_id}"
-    stream_repo_url = "https://github.com/#{new_resource.stream_repo_id}"
-    visualization_repo_url = "https://github.com/#{new_resource.visualization_repo_id}"
+    end)
   end
 
   # backend
+
+  backend_repo_url = if new_resource.repo_mode == 'ssh'
+                       "git@github.com:#{new_resource.backend_repo_id}.git"
+                     else
+                       "https://github.com/#{new_resource.backend_repo_id}"
+                     end
 
   backend_dir = ::File.join(new_resource.root_dir, 'backend')
 
@@ -256,7 +268,7 @@ action :install do
   directory env_dir do
     owner new_resource.user
     group new_resource.group
-    mode 0o700
+    mode '0700'
     recursive true
     action :create
   end
@@ -268,8 +280,8 @@ action :install do
     source 'dotenv.erb'
     user new_resource.user
     group new_resource.group
-    mode 0o600
-    variables lazy {
+    mode '0600'
+    variables(lazy do
       {
         env: {
           'REDIS_HOST' => new_resource.redis_host,
@@ -286,7 +298,8 @@ action :install do
           'VOLGACTF_FINAL_QUEUE_REDIS_DB' => new_resource.queue_redis_db,
           'VOLGACTF_FINAL_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
 
-          'VOLGACTF_FINAL_MASTER_FQDN' => new_resource.fqdn,
+          'VOLGACTF_FINAL_MASTER_HOST' => new_resource.internal_host,
+          'VOLGACTF_FINAL_MASTER_PORT' => new_resource.internal_port,
 
           'VOLGACTF_FINAL_TEAM_LOGO_DIR' => team_logo_dir,
           'VOLGACTF_FINAL_UPLOAD_DIR' => upload_dir,
@@ -301,7 +314,7 @@ action :install do
           'VOLGACTF_FINAL_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix
         }
       }
-    }
+    end)
     sensitive true
     action :create
   end
@@ -311,7 +324,7 @@ action :install do
     source 'volgactf-final-cli.sh.erb'
     user 'root'
     group node['root_group']
-    mode 0o755
+    mode '0755'
     variables(
       backend_dir: backend_dir
     )
@@ -323,7 +336,7 @@ action :install do
   directory domain_dir do
     owner new_resource.user
     group new_resource.group
-    mode 0o755
+    mode '0755'
     recursive true
     action :create
   end
@@ -335,11 +348,11 @@ action :install do
     }
 
     if item['type'] == 'competition_init'
-      domain_vars.merge!({
+      domain_vars.merge!(
         internal_networks: new_resource.config['internal_networks'],
         settings: new_resource.config['settings'],
         teams: new_resource.config['teams']
-      })
+      )
     end
 
     template domain_filename do
@@ -347,19 +360,20 @@ action :install do
       source "domain/#{item['type']}.rb.erb"
       user new_resource.user
       group new_resource.group
-      mode 0644
+      mode '0644'
       variables domain_vars
       action :create
     end
   end
 
   web_env_file_path = ::File.join(env_dir, 'web')
+
   template web_env_file_path do
     cookbook 'volgactf-final'
-    source 'envfile.erb'
+    source (node['platform'] == 'ubuntu' && node['platform_version'].to_f < 20.04) ? 'envfile.ubuntu-18.erb' : 'envfile.erb'
     owner new_resource.user
     group new_resource.group
-    variables lazy {
+    variables(lazy do
       {
         env: {
           'REDIS_HOST' => new_resource.redis_host,
@@ -376,13 +390,17 @@ action :install do
           'VOLGACTF_FINAL_QUEUE_REDIS_DB' => new_resource.queue_redis_db,
           'VOLGACTF_FINAL_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
 
-          'VOLGACTF_FINAL_MASTER_FQDN' => new_resource.fqdn,
+          'VOLGACTF_FINAL_MASTER_HOST' => new_resource.internal_host,
+          'VOLGACTF_FINAL_MASTER_PORT' => new_resource.internal_port,
 
           'VOLGACTF_FINAL_TEAM_LOGO_DIR' => team_logo_dir,
           'VOLGACTF_FINAL_UPLOAD_DIR' => upload_dir,
 
           'VOLGACTF_FINAL_AUTH_CHECKER_USERNAME' => new_resource.auth_checker_username,
           'VOLGACTF_FINAL_AUTH_CHECKER_PASSWORD' => new_resource.auth_checker_password,
+
+          'VOLGACTF_FINAL_AUTH_MASTER_USERNAME' => new_resource.auth_master_username,
+          'VOLGACTF_FINAL_AUTH_MASTER_PASSWORD' => new_resource.auth_master_password,
 
           'VOLGACTF_FINAL_FLAG_GENERATOR_SECRET' => new_resource.flag_generator_secret,
           'VOLGACTF_FINAL_FLAG_SIGN_KEY_PRIVATE' => new_resource.flag_sign_key_private,
@@ -395,15 +413,15 @@ action :install do
           'APP_ENV' => new_resource.run_mode
         }
       }
-    }
-    mode 0o600
+    end)
+    mode '0600'
     sensitive true
     action :create
     notifies :restart, "systemd_unit[#{new_resource.service_group_name}.target]", :delayed
   end
 
   systemd_unit "#{new_resource.service_group_name}_web@.service" do
-    content(lazy {
+    content(lazy do
       {
         Unit: {
           Description: 'VolgaCTF Final web server on port %I',
@@ -423,17 +441,18 @@ action :install do
           ExecStart: "#{::File.join(new_resource.user_home, '.rbenv', 'shims', 'bundle')} exec thin start -a #{new_resource.web_host} -p %I"
         }
       }
-    })
+    end)
     action :create
   end
 
   queue_env_file_path = ::File.join(env_dir, 'queue')
+
   template queue_env_file_path do
     cookbook 'volgactf-final'
-    source 'envfile.erb'
+    source (node['platform'] == 'ubuntu' && node['platform_version'].to_f < 20.04) ? 'envfile.ubuntu-18.erb' : 'envfile.erb'
     owner new_resource.user
     group new_resource.group
-    variables lazy {
+    variables(lazy do
       {
         env: {
           'REDIS_HOST' => new_resource.redis_host,
@@ -450,7 +469,8 @@ action :install do
           'VOLGACTF_FINAL_QUEUE_REDIS_DB' => new_resource.queue_redis_db,
           'VOLGACTF_FINAL_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
 
-          'VOLGACTF_FINAL_MASTER_FQDN' => new_resource.fqdn,
+          'VOLGACTF_FINAL_MASTER_HOST' => new_resource.internal_host,
+          'VOLGACTF_FINAL_MASTER_PORT' => new_resource.internal_port,
 
           'VOLGACTF_FINAL_TEAM_LOGO_DIR' => team_logo_dir,
           'VOLGACTF_FINAL_UPLOAD_DIR' => upload_dir,
@@ -468,15 +488,15 @@ action :install do
           'STDOUT_SYNC' => new_resource.run_mode == 'development'
         }
       }
-    }
-    mode 0o600
+    end)
+    mode '0600'
     sensitive true
     action :create
     notifies :restart, "systemd_unit[#{new_resource.service_group_name}.target]", :delayed
   end
 
   systemd_unit "#{new_resource.service_group_name}_queue@.service" do
-    content(lazy {
+    content(lazy do
       {
         Unit: {
           Description: 'VolgaCTF Final queue worker %I',
@@ -496,17 +516,18 @@ action :install do
           ExecStart: "#{::File.join(new_resource.user_home, '.rbenv', 'shims', 'bundle')} exec sidekiq -r ./lib/queue/tasks.rb -i %I"
         }
       }
-    })
+    end)
     action :create
   end
 
   scheduler_env_file_path = ::File.join(env_dir, 'scheduler')
+
   template scheduler_env_file_path do
     cookbook 'volgactf-final'
-    source 'envfile.erb'
+    source (node['platform'] == 'ubuntu' && node['platform_version'].to_f < 20.04) ? 'envfile.ubuntu-18.erb' : 'envfile.erb'
     owner new_resource.user
     group new_resource.group
-    variables lazy {
+    variables(lazy do
       {
         env: {
           'REDIS_HOST' => new_resource.redis_host,
@@ -523,7 +544,8 @@ action :install do
           'VOLGACTF_FINAL_QUEUE_REDIS_DB' => new_resource.queue_redis_db,
           'VOLGACTF_FINAL_STREAM_REDIS_CHANNEL_NAMESPACE' => new_resource.stream_redis_channel_namespace,
 
-          'VOLGACTF_FINAL_MASTER_FQDN' => new_resource.fqdn,
+          'VOLGACTF_FINAL_MASTER_HOST' => new_resource.internal_host,
+          'VOLGACTF_FINAL_MASTER_PORT' => new_resource.internal_port,
 
           'VOLGACTF_FINAL_TEAM_LOGO_DIR' => team_logo_dir,
           'VOLGACTF_FINAL_UPLOAD_DIR' => upload_dir,
@@ -541,15 +563,15 @@ action :install do
           'STDOUT_SYNC' => new_resource.run_mode == 'development'
         }
       }
-    }
-    mode 0o600
+    end)
+    mode '0600'
     sensitive true
     action :create
     notifies :restart, "systemd_unit[#{new_resource.service_group_name}.target]", :delayed
   end
 
   systemd_unit "#{new_resource.service_group_name}_scheduler.service" do
-    content(lazy {
+    content(lazy do
       {
         Unit: {
           Description: 'VolgaCTF Final scheduler',
@@ -569,11 +591,17 @@ action :install do
           ExecStart: "#{::File.join(new_resource.user_home, '.rbenv', 'shims', 'bundle')} exec ruby scheduler.rb"
         }
       }
-    })
+    end)
     action :create
   end
 
   # frontend
+
+  frontend_repo_url = if new_resource.repo_mode == 'ssh'
+                        "git@github.com:#{new_resource.frontend_repo_id}.git"
+                      else
+                        "https://github.com/#{new_resource.frontend_repo_id}"
+                      end
 
   frontend_dir = ::File.join(new_resource.root_dir, 'frontend')
 
@@ -598,7 +626,7 @@ action :install do
     directory branding_root_path do
       owner new_resource.user
       group new_resource.group
-      mode 0o755
+      mode '0755'
       recursive true
       action :create
     end
@@ -607,7 +635,7 @@ action :install do
       directory ::File.join(branding_root_path, x) do
         owner new_resource.user
         group new_resource.group
-        mode 0o755
+        mode '0755'
         recursive true
         action :create
       end
@@ -619,7 +647,7 @@ action :install do
         source ::File.join(new_resource.branding_root, x)
         owner new_resource.user
         group new_resource.group
-        mode 0o644
+        mode '0644'
         action :create
       end
     end
@@ -630,12 +658,19 @@ action :install do
     user new_resource.user
     cwd frontend_dir
     environment(
+      'HOME' => new_resource.user_home,
       'BRANDING_ROOT_PATH' => branding_root_path.nil? ? ::File.join(frontend_dir, 'branding-default') : branding_root_path
     )
     action :run
   end
 
   # stream
+
+  stream_repo_url = if new_resource.repo_mode == 'ssh'
+                      "git@github.com:#{new_resource.stream_repo_id}.git"
+                    else
+                      "https://github.com/#{new_resource.stream_repo_id}"
+                    end
 
   stream_dir = ::File.join(new_resource.root_dir, 'stream')
 
@@ -656,7 +691,7 @@ action :install do
   stream_config = {
     network: {
       internal: new_resource.config['internal_networks'],
-      team: new_resource.config['teams'].values.map { |x| x['network']}
+      team: new_resource.config['teams'].values.map { |x| x['network'] }
     }
   }
 
@@ -665,18 +700,19 @@ action :install do
   file stream_config_file do
     owner new_resource.user
     group new_resource.group
-    mode 0o644
+    mode '0644'
     content ::JSON.pretty_generate(stream_config)
     action :create
   end
 
   stream_env_file_path = ::File.join(env_dir, 'stream')
+
   template stream_env_file_path do
     cookbook 'volgactf-final'
-    source 'envfile.erb'
+    source (node['platform'] == 'ubuntu' && node['platform_version'].to_f < 20.04) ? 'envfile.ubuntu-18.erb' : 'envfile.erb'
     owner new_resource.user
     group new_resource.group
-    variables lazy {
+    variables(lazy do
       {
         env: {
           'HOST' => new_resource.stream_host,
@@ -700,15 +736,15 @@ action :install do
           'LOG_LEVEL' => new_resource.log_level.downcase
         }
       }
-    }
-    mode 0o600
+    end)
+    mode '0600'
     sensitive true
     action :create
     notifies :restart, "systemd_unit[#{new_resource.service_group_name}_stream.service]", :delayed
   end
 
   systemd_unit "#{new_resource.service_group_name}_stream.service" do
-    content(lazy {
+    content(lazy do
       {
         Unit: {
           Description: 'VolgaCTF Final stream server',
@@ -728,12 +764,12 @@ action :install do
           ExecStart: '/usr/local/bin/node server.js'
         }
       }
-    })
+    end)
     action :create
   end
 
   systemd_unit "#{new_resource.service_group_name}.target" do
-    content(lazy {
+    content(lazy do
       {
         Unit: {
           Description: 'VolgaCTF Final',
@@ -750,11 +786,17 @@ action :install do
           WantedBy: 'multi-user.target'
         }
       }
-    })
+    end)
     action %i[create enable start]
   end
 
   # visualization
+
+  visualization_repo_url = if new_resource.repo_mode == 'ssh'
+                             "git@github.com:#{new_resource.visualization_repo_id}.git"
+                           else
+                             "https://github.com/#{new_resource.visualization_repo_id}"
+                           end
 
   visualization_dir = ::File.join(new_resource.root_dir, 'visualization')
 
@@ -771,19 +813,11 @@ action :install do
   nginx_dir = ::File.join(new_resource.root_dir, 'nginx')
 
   directory nginx_dir do
-    owner lazy { node.run_state['nginx']['user'] }
-    group lazy { node.run_state['nginx']['group'] }
-    mode 0o700
+    owner(lazy { node.run_state['nginx']['user'] })
+    group(lazy { node.run_state['nginx']['group'] })
+    mode '0700'
     recursive true
     action :create
-  end
-
-  htpasswd_file = ::File.join(nginx_dir, "volgactf-final.htpasswd")
-
-  htpasswd htpasswd_file do
-    user new_resource.auth_master_username
-    password new_resource.auth_master_password
-    action :overwrite
   end
 
   nginx_conf 'volgactf-final-ratelimit' do
@@ -807,17 +841,19 @@ action :install do
   cookbook_file helper_js_nginx do
     cookbook 'volgactf-final'
     source 'volgactf-final-helper.js'
-    owner lazy { node.run_state['nginx']['user'] }
-    group lazy { node.run_state['nginx']['group'] }
+    owner(lazy { node.run_state['nginx']['user'] })
+    group(lazy { node.run_state['nginx']['group'] })
     action :create
     notifies :restart, 'service[nginx]', :delayed
   end
+
+  upstream_web_name = 'volgactf-final-web'
 
   nginx_conf 'volgactf-final-upstream' do
     cookbook 'volgactf-final'
     template 'nginx/upstream.conf.erb'
     variables(
-      upstream_web: 'volgactf-final-web',
+      upstream_web: upstream_web_name,
       web_processes: new_resource.web_processes,
       web_host: new_resource.web_host,
       web_port_start: new_resource.web_port_start,
@@ -837,33 +873,127 @@ action :install do
     action :create
   end
 
+  public_listen = nil
+  unless new_resource.public_listen.nil?
+    public_listen = new_resource.public_listen.is_a?(Array) ? new_resource.public_listen : [new_resource.public_listen]
+  end
+
+  public_fqdn_list = new_resource.public_fqdn.is_a?(Array) ? new_resource.public_fqdn : [new_resource.public_fqdn]
+
+  ngx_vhost_variables = {
+    fqdn_list: public_fqdn_list,
+    port: 80,
+    listen: public_listen,
+    default_server: new_resource.public_default_server,
+    secure: new_resource.public_secure,
+    secure_port: 443,
+    proxied: false,
+    access_log_options: new_resource.access_log_options,
+    error_log_options: new_resource.error_log_options,
+    frontend_dir: frontend_dir,
+    visualization_dir: visualization_dir,
+    media_dir: media_dir,
+    upstream_web: upstream_web_name,
+    upstream_stream: 'volgactf-final-stream',
+    internal_networks: new_resource.config['internal_networks'],
+    team_networks: new_resource.config['teams'].values.map { |x| x['network'] },
+    competition_title: new_resource.config['competition']['title'],
+    flag_info_req_limit_burst: new_resource.config['api_req_limits']['flag_info']['burst'],
+    flag_info_req_limit_nodelay: new_resource.config['api_req_limits']['flag_info']['nodelay'],
+    flag_submit_req_limit_burst: new_resource.config['api_req_limits']['flag_submit']['burst'],
+    flag_submit_req_limit_nodelay: new_resource.config['api_req_limits']['flag_submit']['nodelay'],
+    service_status_req_limit_burst: new_resource.config['api_req_limits']['service_status']['burst'],
+    service_status_req_limit_nodelay: new_resource.config['api_req_limits']['service_status']['nodelay']
+  }
+
+  if new_resource.public_secure
+    tls_rsa_certificate public_fqdn_list[0] do
+      vlt_provider new_resource.vlt_provider
+      vlt_format new_resource.vlt_format
+      action :deploy
+    end
+
+    tls = ::ChefCookbook::TLS.new(node, vlt_provider: new_resource.vlt_provider, vlt_format: new_resource.vlt_format)
+
+    ngx_vhost_variables.merge!(
+      certificate_entries: [
+        tls.rsa_certificate_entry(public_fqdn_list[0])
+      ],
+      hsts_max_age: new_resource.public_hsts_max_age,
+      oscp_stapling: new_resource.public_oscp_stapling
+    )
+
+    if tls.has_ec_certificate?(public_fqdn_list[0])
+      tls_ec_certificate public_fqdn_list[0] do
+        vlt_provider new_resource.vlt_provider
+        vlt_format new_resource.vlt_format
+        action :deploy
+      end
+
+      ngx_vhost_variables[:certificate_entries] << tls.ec_certificate_entry(public_fqdn_list[0])
+    end
+  end
+
   nginx_vhost 'volgactf-final' do
     cookbook 'volgactf-final'
     template 'nginx/master.vhost.conf.erb'
-    variables(lazy {
+    variables(lazy do
+      ngx_vhost_variables.merge(
+        access_log: ::File.join(
+          node.run_state['nginx']['log_dir'],
+          'volgactf-final_access.log'
+        ),
+        error_log: ::File.join(
+          node.run_state['nginx']['log_dir'],
+          'volgactf-final_error.log'
+        )
+      )
+    end)
+    action :enable
+  end
+
+  unless new_resource.proxied_fqdn.nil?
+    nginx_vhost 'volgactf-final.proxied' do
+      cookbook 'volgactf-final'
+      template 'nginx/master.vhost.conf.erb'
+      variables(lazy do
+        ngx_vhost_variables.merge(
+          fqdn_list: [new_resource.proxied_fqdn],
+          listen: new_resource.proxied_listen.nil? ? nil : [new_resource.proxied_listen],
+          port: new_resource.proxied_port,
+          default_server: new_resource.proxied_default_server,
+          secure: false,
+          proxied: true,
+          access_log: ::File.join(
+            node.run_state['nginx']['log_dir'],
+            'volgactf-final.proxied_access.log'
+          ),
+          error_log: ::File.join(
+            node.run_state['nginx']['log_dir'],
+            'volgactf-final.proxied_error.log'
+          )
+        )
+      end)
+      action :enable
+    end
+  end
+
+  nginx_vhost 'volgactf-final.internal' do
+    cookbook 'volgactf-final'
+    template 'nginx/master.internal.vhost.conf.erb'
+    variables(lazy do
       {
-        fqdn_list: [new_resource.fqdn].concat(new_resource.extra_fqdn),
-        access_log: ::File.join(node.run_state['nginx']['log_dir'], 'new-volgactf-final_access.log'),
+        host: new_resource.internal_host,
+        port: new_resource.internal_port,
+        default_server: new_resource.internal_default_server,
+        access_log: ::File.join(node.run_state['nginx']['log_dir'], 'volgactf-final.internal_access.log'),
         access_log_options: new_resource.access_log_options,
-        error_log: ::File.join(node.run_state['nginx']['log_dir'], 'new-volgactf-final_error.log'),
+        error_log: ::File.join(node.run_state['nginx']['log_dir'], 'volgactf-final.internal_error.log'),
         error_log_options: new_resource.error_log_options,
-        frontend_dir: frontend_dir,
-        visualization_dir: visualization_dir,
-        media_dir: media_dir,
-        upstream_web: 'volgactf-final-web',
-        upstream_stream: 'volgactf-final-stream',
-        internal_networks: new_resource.config['internal_networks'],
-        htpasswd: htpasswd_file,
-        team_networks: new_resource.config['teams'].values.map { |x| x['network'] },
-        competition_title: new_resource.config['competition']['title'],
-        flag_info_req_limit_burst: new_resource.config['api_req_limits']['flag_info']['burst'],
-        flag_info_req_limit_nodelay: new_resource.config['api_req_limits']['flag_info']['nodelay'],
-        flag_submit_req_limit_burst: new_resource.config['api_req_limits']['flag_submit']['burst'],
-        flag_submit_req_limit_nodelay: new_resource.config['api_req_limits']['flag_submit']['nodelay'],
-        service_status_req_limit_burst: new_resource.config['api_req_limits']['service_status']['burst'],
-        service_status_req_limit_nodelay: new_resource.config['api_req_limits']['service_status']['nodelay']
+        upstream_web: upstream_web_name,
+        internal_networks: new_resource.config['internal_networks']
       }
-    })
+    end)
     action :enable
   end
 end

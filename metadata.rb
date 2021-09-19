@@ -1,12 +1,13 @@
+# frozen_string_literal: true
+
 name 'volgactf-final'
 description 'Installs and configures VolgaCTF Final'
-version '1.4.3'
+version '1.5.0'
 
-depends 'htpasswd', '~> 0.3.0'
-depends 'agit', '~> 0.1.2'
-depends 'ruby_rbenv', '~> 2.1.2'
-depends 'ngx', '>= 2.2.0'
-depends 'tls', '~> 3.2.0'
-depends 'nodejs', '~> 6.0.0'
+depends 'agit', '~> 0.1'
+depends 'ruby_rbenv', '~> 4.0'
+depends 'ngx', '~> 2.2'
+depends 'tls', '~> 4.1'
+depends 'nodejs', '~> 7.0'
 
 gem 'htauth'

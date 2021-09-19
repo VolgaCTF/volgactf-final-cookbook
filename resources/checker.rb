@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 resource_name :volgactf_final_checker
 
 property :root_dir, String, default: '/opt/volgactf/final'
@@ -18,9 +20,10 @@ property :flag_wrap_suffix, String, default: '}'
 
 property :upstream_host, String, default: '127.0.0.1'
 property :upstream_port_start, Integer, default: 8001
-property :upstream_processes, Integer, default: 2
+property :processes, Integer, default: 2
 
-property :fqdn, String, required: true
+property :listen, [String, NilClass], default: nil
+property :default_server, [TrueClass, FalseClass], default: true
 
 property :environment, Hash, default: {}
 
@@ -35,7 +38,7 @@ action :install do
   checker_dir = ::File.join(new_resource.root_dir, new_resource.name)
 
   directory checker_dir do
-    mode 0o755
+    mode '0755'
     recursive true
     action :create
   end
@@ -48,27 +51,29 @@ action :install do
 
   dotenv_file = ::File.join(checker_dir, 'env')
 
+  merged_env = new_resource.environment.merge(
+    'VOLGACTF_FINAL_AUTH_MASTER_USERNAME' => new_resource.auth_master_username,
+    'VOLGACTF_FINAL_AUTH_MASTER_PASSWORD' => new_resource.auth_master_password,
+    'VOLGACTF_FINAL_AUTH_CHECKER_USERNAME' => new_resource.auth_checker_username,
+    'VOLGACTF_FINAL_AUTH_CHECKER_PASSWORD' => new_resource.auth_checker_password,
+    'VOLGACTF_FINAL_FLAG_SIGN_KEY_PUBLIC' => new_resource.flag_sign_key_public,
+    'VOLGACTF_FINAL_FLAG_WRAP_PREFIX' => new_resource.flag_wrap_prefix,
+    'VOLGACTF_FINAL_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix
+  )
+
   template dotenv_file do
     cookbook 'volgactf-final'
     source 'dotenv.erb'
-    mode 0o644
+    mode '0644'
     variables(
-      env: new_resource.environment.merge({
-        'VOLGACTF_FINAL_AUTH_MASTER_USERNAME' => new_resource.auth_master_username,
-        'VOLGACTF_FINAL_AUTH_MASTER_PASSWORD' => new_resource.auth_master_password,
-        'VOLGACTF_FINAL_AUTH_CHECKER_USERNAME' => new_resource.auth_checker_username,
-        'VOLGACTF_FINAL_AUTH_CHECKER_PASSWORD' => new_resource.auth_checker_password,
-        'VOLGACTF_FINAL_FLAG_SIGN_KEY_PUBLIC' => new_resource.flag_sign_key_public,
-        'VOLGACTF_FINAL_FLAG_WRAP_PREFIX' => new_resource.flag_wrap_prefix,
-        'VOLGACTF_FINAL_FLAG_WRAP_SUFFIX' => new_resource.flag_wrap_suffix
-      })
+      env: merged_env
     )
     action :create
     notifies :restart, "systemd_unit[#{new_resource.service_group_name}_#{new_resource.name}.target]", :delayed
   end
 
   systemd_unit "#{new_resource.service_group_name}_#{new_resource.name}@.service" do
-    content({
+    content(
       Unit: {
         Description: "#{new_resource.name} container on port %i",
         PartOf: "#{new_resource.service_group_name}_#{new_resource.name}.target",
@@ -81,48 +86,49 @@ action :install do
       Service: {
         Restart: 'always',
         RestartSec: 5,
-        ExecStartPre: %Q(/bin/sh -c "/usr/bin/docker rm -f #{new_resource.name}-%i 2> /dev/null || /bin/true"),
+        ExecStartPre: %(/bin/sh -c "/usr/bin/docker rm -f #{new_resource.name}-%i 2> /dev/null || /bin/true"),
         ExecStart: "/usr/bin/docker run --rm -a STDIN -a STDOUT -a STDERR -p #{new_resource.upstream_host}:%i:80 --network #{new_resource.docker_network_name} --dns #{new_resource.docker_network_gateway} --env-file #{dotenv_file} --name #{new_resource.name}-%i #{new_resource.docker_image_repo}:#{new_resource.docker_image_tag}",
         ExecStop: "/usr/bin/docker stop #{new_resource.name}-%i"
       },
       Install: {
         WantedBy: 'multi-user.target'
       }
-    })
+    )
     action :create
   end
 
   systemd_unit "#{new_resource.service_group_name}_#{new_resource.name}.target" do
-    content(lazy {
+    content(lazy do
       {
         Unit: {
           Description: "VolgaCTF Final #{new_resource.name} cluster",
-          Wants: (0...new_resource.upstream_processes).map { |x| "#{new_resource.service_group_name}_#{new_resource.name}@#{x + new_resource.upstream_port_start}.service" }
+          Wants: (0...new_resource.processes).map { |x| "#{new_resource.service_group_name}_#{new_resource.name}@#{x + new_resource.upstream_port_start}.service" }
         },
         Install: {
           WantedBy: 'multi-user.target'
         }
       }
-    })
+    end)
     action %i[create enable start]
   end
 
   nginx_vhost "volgactf-final-#{new_resource.name}" do
     cookbook 'volgactf-final'
     template 'nginx/checker.vhost.conf.erb'
-    variables(lazy {
+    variables(lazy do
       {
-        fqdn: new_resource.fqdn,
+        listen: new_resource.listen,
+        default_server: new_resource.default_server,
         name: new_resource.name,
         access_log: ::File.join(node.run_state['nginx']['log_dir'], 'volgactf-final_access.log'),
         access_log_options: new_resource.access_log_options,
         error_log: ::File.join(node.run_state['nginx']['log_dir'], 'volgactf-final_error.log'),
         error_log_options: new_resource.error_log_options,
         upstream_host: new_resource.upstream_host,
-        upstream_processes: new_resource.upstream_processes,
-        upstream_port_start: new_resource.upstream_port_start
+        upstream_port_start: new_resource.upstream_port_start,
+        processes: new_resource.processes
       }
-    })
+    end)
     action :enable
   end
 end

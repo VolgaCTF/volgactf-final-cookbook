@@ -1,6 +1,50 @@
+<% if @secure %>
 server {
-  listen 80;
+  <% if @listen.nil? %>
+  listen <%= @port %><%= @default_server ? ' default_server' : '' %>;
+  <% else %>
+  <% @listen.each do |host| %>
+  listen <%= host %>:<%= @port %><%= @default_server ? ' default_server' : '' %>;
+  <% end %>
+  <% end %>
   server_name <%= @fqdn_list.join(' ') %>;
+
+  location / {
+    return 301 https://$host$request_uri;
+  }
+}
+<% end %>
+
+server {
+  server_name <%= @fqdn_list.join(' ') %>;
+  <% if @secure %>
+  <% if @listen.nil? %>
+  listen <%= @secure_port %> ssl http2<%= @default_server ? ' default_server' : '' %>;
+  <% else %>
+  <% @listen.each do |host| %>
+  listen <%= host %>:<%= @secure_port %> ssl http2<%= @default_server ? ' default_server' : '' %>;
+  <% end %>
+  <% end %>
+
+  <% @certificate_entries.each do |item| %>
+  ssl_certificate <%= item.certificate_path %>; # CRC32: <%= item.certificate_checksum %>
+  ssl_certificate_key <%= item.certificate_private_key_path %>; # CRC32: <%= item.certificate_private_key_checksum %>
+  <% end %>
+
+  <% if @oscp_stapling %>
+  ssl_stapling on;
+  ssl_stapling_verify on;
+  <% end %>
+
+  <% else %>
+  <% if @listen.nil? %>
+  listen <%= @port %><%= @default_server ? ' default_server' : '' %>;
+  <% else %>
+  <% @listen.each do |host| %>
+  listen <%= host %>:<%= @port %><%= @default_server ? ' default_server' : '' %>;
+  <% end %>
+  <% end %>
+  <% end %>
 
   <% if @access_log_options == 'off' %>
   access_log off;
@@ -14,36 +58,21 @@ server {
   location / {
     root <%= @frontend_dir %>/public;
     rewrite ^(.*)$ /index.html break;
+    <% if @secure %>
+    add_header Strict-Transport-Security "max-age=<%= @hsts_max_age %>" always;
+    <% end %>
   }
 
   location /dist/ {
     root <%= @frontend_dir %>;
-  }
-
-  location /api/checker/v2/ {
-    <% @internal_networks.each do |network| %>
-    allow <%= network %>;
+    gzip_static on;
+    brotli_static on;
+    <% if @secure %>
+    add_header Strict-Transport-Security "max-age=<%= @hsts_max_age %>" always;
     <% end %>
-    deny all;
-
-    auth_basic "Restricted";
-    auth_basic_user_file <%= @htpasswd %>;
-
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header Host $http_host;
-
-    proxy_pass http://<%= @upstream_web %>;
-    proxy_redirect off;
-
-    proxy_http_version 1.1;
-    chunked_transfer_encoding off;
-    proxy_buffering off;
-    proxy_cache off;
-
-    client_max_body_size 1m;
   }
 
+  <% unless @proxied %>
   location /api/flag/v1/submit {
     default_type text/plain;
     if ($volgactf_final_identity = 0) {
@@ -71,6 +100,9 @@ server {
     error_page 403 /flag_submit_403;
     error_page 413 /flag_submit_413;
     error_page 429 /flag_submit_429;
+    <% if @secure %>
+    add_header Strict-Transport-Security "max-age=<%= @hsts_max_age %>" always;
+    <% end %>
   }
 
   location = /flag_submit_403 {
@@ -116,6 +148,9 @@ server {
     error_page 403 /service_getstatus_403;
     error_page 404 /service_getstatus_404;
     error_page 429 /service_getstatus_429;
+    <% if @secure %>
+    add_header Strict-Transport-Security "max-age=<%= @hsts_max_age %>" always;
+    <% end %>
   }
 
   location = /service_getstatus_403 {
@@ -161,6 +196,9 @@ server {
     error_page 403 /flag_getinfo_403;
     error_page 404 /flag_getinfo_404;
     error_page 429 /flag_getinfo_429;
+    <% if @secure %>
+    add_header Strict-Transport-Security "max-age=<%= @hsts_max_age %>" always;
+    <% end %>
   }
 
   location = /flag_getinfo_403 {
@@ -180,6 +218,7 @@ server {
     default_type text/plain;
     js_content flag_getinfo_429;
   }
+  <% end %>
 
   location /api/ {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -195,6 +234,9 @@ server {
     proxy_cache off;
 
     client_max_body_size 1m;
+    <% if @secure %>
+    add_header Strict-Transport-Security "max-age=<%= @hsts_max_age %>" always;
+    <% end %>
   }
 
   location /stream/ {
@@ -210,14 +252,12 @@ server {
     proxy_buffering off;
     proxy_cache off;
     proxy_read_timeout 1h;
+    <% if @secure %>
+    add_header Strict-Transport-Security "max-age=<%= @hsts_max_age %>" always;
+    <% end %>
   }
 
   location /visualization {
-    <% @internal_networks.each do |network| %>
-    allow <%= network %>;
-    <% end %>
-    deny all;
-
     location ~ /\.git {
       deny all;
     }
@@ -225,8 +265,12 @@ server {
     set $contest_title "<%= @competition_title %>";
     ssi on;
     alias <%= @visualization_dir %>;
+    <% if @secure %>
+    add_header Strict-Transport-Security "max-age=<%= @hsts_max_age %>" always;
+    <% end %>
   }
 
+  <% unless @proxied %>
   location /media {
     <% @internal_networks.concat(@team_networks).each do |network| %>
     allow <%= network %>;
@@ -234,5 +278,9 @@ server {
     deny all;
 
     alias <%= @media_dir %>;
+    <% if @secure %>
+    add_header Strict-Transport-Security "max-age=<%= @hsts_max_age %>" always;
+    <% end %>
   }
+  <% end %>
 }
